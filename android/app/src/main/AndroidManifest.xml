@@ -4,6 +4,14 @@
     <uses-feature android:name="android.software.live_wallpaper" android:required="true" />
     <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
 
+    <!-- Lock screen mode only -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
     <application
         android:label="Flashlight Buddy"
         android:icon="@drawable/ic_launcher"
@@ -32,5 +40,31 @@
                 android:name="android.service.wallpaper"
                 android:resource="@xml/wallpaper" />
         </service>
+
+        <activity
+            android:name=".LockSceneActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:taskAffinity="com.flashbuddy.app.lock"
+            android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
+
+        <service
+            android:name=".LockWatchService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Watches the system flashlight state so an animation can be shown on the lock screen while the flashlight is on." />
+        </service>
+
+        <receiver android:name=".BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

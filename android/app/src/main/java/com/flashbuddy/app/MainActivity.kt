@@ -32,6 +32,7 @@ class MainActivity : Activity() {
     private lateinit var torchBtn: Button
     private lateinit var setBtn: Button
     private lateinit var clearPhotoBtn: Button
+    private lateinit var lockBtn: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,6 +83,8 @@ class MainActivity : Activity() {
             refresh()
         }
 
+        lockBtn = btn("", false) { toggleLockMode() }
+
         val bottom = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -92,6 +95,7 @@ class MainActivity : Activity() {
             addView(torchBtn, lp())
             addView(photoBtn, lp())
             addView(clearPhotoBtn, lp())
+            addView(lockBtn, lp())
         }
 
         val root = FrameLayout(this)
@@ -109,6 +113,7 @@ class MainActivity : Activity() {
         torch.start()
         pointing.start()
         preview.running = true
+        if (LockMode.isEnabled(this)) LockMode.setEnabled(this, true)
         refresh()
     }
 
@@ -126,6 +131,11 @@ class MainActivity : Activity() {
         val on = torch.isOn
         torchBtn.text = if (on) "Flashlight off" else "Flashlight on"
         setBtn.visibility = if (isOurWallpaper()) View.GONE else View.VISIBLE
+        lockBtn.text = when {
+            !LockMode.isEnabled(this) -> "Lock screen mode: off"
+            !LockMode.canShowOverLock(this) -> "Lock screen mode: on (allow \"Display over other apps\")"
+            else -> "Lock screen mode: on"
+        }
         clearPhotoBtn.visibility = if (Prefs.photoFile(this).exists()) View.VISIBLE else View.GONE
         titleView?.animate()?.alpha(if (on) 0f else 1f)?.setDuration(500)?.start()
         status.text = when {
@@ -134,6 +144,23 @@ class MainActivity : Activity() {
             isOurWallpaper() -> "Wallpaper is set. Turn on the flashlight from quick settings and go to your home screen."
             else -> "Tap \"Set as wallpaper\", then turn on your flashlight anytime."
         }
+    }
+
+    private fun toggleLockMode() {
+        val on = !LockMode.isEnabled(this)
+        if (on && Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 9)
+        }
+        LockMode.setEnabled(this, on)
+        if (on && !LockMode.canShowOverLock(this)) {
+            toast("Turn on \"Allow display over other apps\" for Flashlight Buddy, then come back.")
+            try {
+                startActivity(Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    android.net.Uri.parse("package:$packageName")))
+            } catch (_: Exception) {}
+        }
+        refresh()
     }
 
     private fun applyWallpaper() {
@@ -186,6 +213,7 @@ class MainActivity : Activity() {
 /** In-app live preview using the same Scene as the wallpaper. */
 class SceneView(context: Context, private val torch: TorchWatcher, private val pointing: PointingTracker) : View(context) {
     private val scene = Scene()
+    var skipDayScene = false
     private var last = 0L
     private val start = SystemClock.elapsedRealtime()
     var running = false
@@ -205,7 +233,8 @@ class SceneView(context: Context, private val torch: TorchWatcher, private val p
         val now = SystemClock.elapsedRealtime()
         val dt = if (last == 0L) 0.016f else (now - last) / 1000f
         last = now
-        scene.update(dt, torch.isOn, pointing.yaw, pointing.pitch)
+        scene.update(dt, torch.isOn || skipDayScene, pointing.yaw, pointing.pitch)
+        if (skipDayScene && scene.night < 1f) scene.night = 1f
         scene.render(canvas, width.toFloat(), height.toFloat(), (now - start) / 1000f)
         if (running) postInvalidateOnAnimation()
     }
