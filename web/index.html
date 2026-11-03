@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#04061a">
+<title>Flashlight Buddy</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root { --fg: #10213a; --btn: #ffc928; --btn-fg: #2a1d00; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fg: #10213a; } }
+  :root[data-theme="dark"] { --fg: #10213a; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #04061a; touch-action: none; -webkit-user-select: none; user-select: none; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .ui { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px 16px calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 10px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; pointer-events: none; }
+  .title { position: fixed; top: calc(20px + env(safe-area-inset-top)); left: 16px; right: 16px; text-align: center; font: 800 26px/1.2 system-ui, sans-serif; color: var(--fg); transition: opacity .6s; pointer-events: none; }
+  .title small { display: block; font-weight: 500; font-size: 14px; opacity: .75; margin-top: 4px; }
+  body.on .title { opacity: 0; }
+  button { pointer-events: auto; border: 0; border-radius: 999px; font: 700 17px system-ui, sans-serif; padding: 14px 26px; background: var(--btn); color: var(--btn-fg); box-shadow: 0 6px 18px rgba(0,0,0,.25); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+  body.on button.main { background: #1d2550; color: #ffe79a; }
+  .hint { font-size: 13px; color: #10213a; background: rgba(255,255,255,.7); padding: 6px 12px; border-radius: 10px; max-width: 340px; text-align: center; transition: color .6s, background .6s; }
+  body.on .hint { color: #cfd8ff; background: rgba(10,14,40,.6); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  button.small { font-size: 13px; padding: 8px 14px; background: rgba(255,255,255,.85); color: #10213a; }
+  body.on button.small { background: rgba(30,38,80,.8); color: #cfd8ff; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="title">Flashlight Buddy<small>Turn on the flashlight and point your phone around</small></div>
+<div class="ui">
+  <div class="hint" id="hint">Tap the button to switch on your flashlight.</div>
+  <div class="row">
+    <button class="main" id="torch"><span id="torchIcon">🔦</span><span id="torchLabel">Flashlight on</span></button>
+  </div>
+  <div class="row">
+    <button class="small" id="recenter">Re-center direction</button>
+  </div>
+</div>
+<script src="scene.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

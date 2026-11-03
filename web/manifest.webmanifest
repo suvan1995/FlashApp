@@ -1,0 +1,10 @@
+{
+  "name": "Flashlight Buddy",
+  "short_name": "Flash Buddy",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#04061a",
+  "theme_color": "#04061a",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
