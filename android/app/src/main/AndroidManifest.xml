@@ -20,8 +20,7 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true"
-            android:screenOrientation="portrait">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -46,7 +45,6 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:launchMode="singleTop"
-            android:screenOrientation="portrait"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:taskAffinity="com.flashbuddy.app.lock"
