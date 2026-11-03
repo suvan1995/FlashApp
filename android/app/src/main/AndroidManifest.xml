@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-feature android:name="android.software.live_wallpaper" android:required="true" />
+    <uses-feature android:name="android.software.live_wallpaper" android:required="false" />
     <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
 
-    <!-- Lock screen mode only -->
+    <!-- Flashlight watcher -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -41,27 +41,28 @@
         </service>
 
         <activity
-            android:name=".LockSceneActivity"
+            android:name=".SceneActivity"
             android:exported="false"
             android:excludeFromRecents="true"
             android:launchMode="singleTop"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
-            android:taskAffinity="com.flashbuddy.app.lock"
+            android:taskAffinity="com.flashbuddy.app.scene"
             android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
 
         <service
-            android:name=".LockWatchService"
+            android:name=".WatchService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Watches the system flashlight state so an animation can be shown on the lock screen while the flashlight is on." />
+                android:value="Watches the system flashlight state so an animation can be shown while the flashlight is on." />
         </service>
 
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
     </application>

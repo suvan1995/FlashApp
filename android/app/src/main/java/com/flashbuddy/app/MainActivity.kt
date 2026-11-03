@@ -12,7 +12,6 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
-import android.provider.MediaStore
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -23,16 +22,17 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 
-/** Setup screen with a live preview of the wallpaper. */
+/** Setup screen, with a live preview of the animation behind it. */
 class MainActivity : Activity() {
     private lateinit var preview: SceneView
     private lateinit var torch: TorchWatcher
     private lateinit var pointing: PointingTracker
     private lateinit var status: TextView
+    private lateinit var mainBtn: Button
+    private lateinit var permBtn: Button
+    private lateinit var seeBtn: Button
     private lateinit var torchBtn: Button
-    private lateinit var setBtn: Button
-    private lateinit var clearPhotoBtn: Button
-    private lateinit var lockBtn: Button
+    private var titleView: TextView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,17 +44,17 @@ class MainActivity : Activity() {
         preview = SceneView(this, torch, pointing)
 
         val dp = resources.displayMetrics.density
-        fun btn(text: String, primary: Boolean, onClick: () -> Unit) = Button(this).apply {
-            this.text = text
+        fun btn(primary: Boolean, small: Boolean = false, onClick: () -> Unit) = Button(this).apply {
             isAllCaps = false
-            textSize = 16f
-            typeface = Typeface.DEFAULT_BOLD
+            textSize = if (small) 14f else 16f
+            typeface = if (small) Typeface.DEFAULT else Typeface.DEFAULT_BOLD
             setTextColor(if (primary) Color.parseColor("#2a1d00") else Color.parseColor("#10213a"))
             background = GradientDrawable().apply {
                 cornerRadius = 999f
                 setColor(if (primary) Color.parseColor("#ffc928") else Color.parseColor("#E6FFFFFF"))
             }
-            setPadding((22 * dp).toInt(), (12 * dp).toInt(), (22 * dp).toInt(), (12 * dp).toInt())
+            val ph = if (small) 16 else 22; val pv = if (small) 8 else 12
+            setPadding((ph * dp).toInt(), (pv * dp).toInt(), (ph * dp).toInt(), (pv * dp).toInt())
             setOnClickListener { onClick() }
         }
 
@@ -65,37 +65,36 @@ class MainActivity : Activity() {
             setTextColor(Color.parseColor("#10213a"))
             gravity = Gravity.CENTER
         }
+        titleView = title
         status = TextView(this).apply {
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.parseColor("#10213a"))
-            background = GradientDrawable().apply { cornerRadius = 12 * dp; setColor(Color.parseColor("#CCFFFFFF")) }
-            setPadding((12 * dp).toInt(), (8 * dp).toInt(), (12 * dp).toInt(), (8 * dp).toInt())
+            background = GradientDrawable().apply { cornerRadius = 12 * dp; setColor(Color.parseColor("#E6FFFFFF")) }
+            setPadding((14 * dp).toInt(), (10 * dp).toInt(), (14 * dp).toInt(), (10 * dp).toInt())
         }
-        setBtn = btn("Set as wallpaper", true) { applyWallpaper() }
-        torchBtn = btn("Flashlight on", false) {
-            if (!torch.setTorch(!torch.isOn)) toast("This phone's flashlight couldn't be switched from here.")
-        }
-        val photoBtn = btn("Choose main background photo", false) { pickPhoto() }
-        clearPhotoBtn = btn("Use the cartoon daytime scene", false) {
-            Prefs.photoFile(this).delete()
-            preview.reloadPhoto()
+        mainBtn = btn(true) { toggleWatch() }
+        permBtn = btn(true) { askOverlayPermission() }
+        seeBtn = btn(false, small = true) {
+            Watch.setSeeThrough(this, !Watch.seeThrough(this))
             refresh()
         }
-
-        lockBtn = btn("", false) { toggleLockMode() }
+        torchBtn = btn(false, small = true) {
+            if (!torch.setTorch(!torch.isOn)) toast("This phone's flashlight couldn't be switched from here.")
+        }
+        val wallBtn = btn(false, small = true) { applyWallpaper() }.apply { text = "Use as my wallpaper instead (replaces mine)" }
 
         val bottom = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding((16 * dp).toInt(), 0, (16 * dp).toInt(), (28 * dp).toInt())
             val lp = { LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { topMargin = (8 * dp).toInt() } }
-            addView(status, lp())
-            addView(setBtn, lp())
+            addView(status, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+            addView(permBtn, lp())
+            addView(mainBtn, lp())
+            addView(seeBtn, lp())
             addView(torchBtn, lp())
-            addView(photoBtn, lp())
-            addView(clearPhotoBtn, lp())
-            addView(lockBtn, lp())
+            addView(wallBtn, lp())
         }
 
         val root = FrameLayout(this)
@@ -103,17 +102,14 @@ class MainActivity : Activity() {
         root.addView(title, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT, Gravity.TOP).apply { topMargin = (48 * dp).toInt() })
         root.addView(bottom, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT, Gravity.BOTTOM))
         setContentView(root)
-        titleView = title
     }
-
-    private var titleView: TextView? = null
 
     override fun onResume() {
         super.onResume()
         torch.start()
         pointing.start()
         preview.running = true
-        if (LockMode.isEnabled(this)) LockMode.setEnabled(this, true)
+        if (Watch.isEnabled(this)) Watch.setEnabled(this, true)
         refresh()
     }
 
@@ -124,43 +120,43 @@ class MainActivity : Activity() {
         super.onPause()
     }
 
-    private fun isOurWallpaper(): Boolean =
-        WallpaperManager.getInstance(this).wallpaperInfo?.packageName == packageName
-
     private fun refresh() {
         val on = torch.isOn
-        torchBtn.text = if (on) "Flashlight off" else "Flashlight on"
-        setBtn.visibility = if (isOurWallpaper()) View.GONE else View.VISIBLE
-        lockBtn.text = when {
-            !LockMode.isEnabled(this) -> "Lock screen mode: off"
-            !LockMode.canShowOverLock(this) -> "Lock screen mode: on (allow \"Display over other apps\")"
-            else -> "Lock screen mode: on"
-        }
-        clearPhotoBtn.visibility = if (Prefs.photoFile(this).exists()) View.VISIBLE else View.GONE
+        val watching = Watch.isEnabled(this)
+        val perm = Watch.canDrawOverApps(this)
+        mainBtn.text = if (watching) "Turn Flashlight Buddy off" else "Turn Flashlight Buddy on"
+        permBtn.text = "Allow \"Display over other apps\""
+        permBtn.visibility = if (perm) View.GONE else View.VISIBLE
+        seeBtn.text = if (Watch.seeThrough(this)) "See-through: on" else "See-through: off"
+        torchBtn.text = if (on) "Test: flashlight off" else "Test: flashlight on"
         titleView?.animate()?.alpha(if (on) 0f else 1f)?.setDuration(500)?.start()
         status.text = when {
-            on && pointing.available -> "Point your phone left, right, up or down. Your buddy follows."
-            on -> "This phone has no motion sensor, so the beam stays level."
-            isOurWallpaper() -> "Wallpaper is set. Turn on the flashlight from quick settings and go to your home screen."
-            else -> "Tap \"Set as wallpaper\", then turn on your flashlight anytime."
+            on -> if (pointing.available) "Point your phone left, right, up or down. Your buddy follows."
+                  else "This phone has no motion sensor, so the beam stays level."
+            !perm -> "Step 1: allow \"Display over other apps\" so your buddy can appear on your home and lock screen."
+            !watching -> "Step 2: turn Flashlight Buddy on. Your own wallpaper stays as it is."
+            Watch.seeThrough(this) -> "Ready. When the flashlight turns on, your buddy appears on your lock screen, and floats see-through over your home screen so you can keep using your phone."
+            else -> "Ready. When the flashlight turns on, your buddy fills the screen. Tap it or turn the flashlight off to go back."
         }
     }
 
-    private fun toggleLockMode() {
-        val on = !LockMode.isEnabled(this)
+    private fun toggleWatch() {
+        val on = !Watch.isEnabled(this)
         if (on && Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 9)
         }
-        LockMode.setEnabled(this, on)
-        if (on && !LockMode.canShowOverLock(this)) {
-            toast("Turn on \"Allow display over other apps\" for Flashlight Buddy, then come back.")
-            try {
-                startActivity(Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    android.net.Uri.parse("package:$packageName")))
-            } catch (_: Exception) {}
-        }
+        Watch.setEnabled(this, on)
+        if (on && !Watch.canDrawOverApps(this)) askOverlayPermission()
         refresh()
+    }
+
+    private fun askOverlayPermission() {
+        toast("Find Flashlight Buddy and switch on \"Allow display over other apps\", then come back.")
+        try {
+            startActivity(Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                android.net.Uri.parse("package:$packageName")))
+        } catch (_: Exception) {}
     }
 
     private fun applyWallpaper() {
@@ -178,36 +174,7 @@ class MainActivity : Activity() {
         }
     }
 
-    @Suppress("DEPRECATION")
-    private fun pickPhoto() {
-        val intent = if (Build.VERSION.SDK_INT >= 33) {
-            Intent(MediaStore.ACTION_PICK_IMAGES).setType("image/*")
-        } else {
-            Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE)
-        }
-        try { startActivityForResult(intent, PICK_PHOTO) } catch (e: Exception) { toast("No photo picker found.") }
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        val uri = data?.data ?: return
-        if (requestCode != PICK_PHOTO || resultCode != RESULT_OK) return
-        try {
-            contentResolver.openInputStream(uri)?.use { input ->
-                Prefs.photoFile(this).outputStream().use { input.copyTo(it) }
-            }
-            preview.reloadPhoto()
-            refresh()
-            toast("Main background updated.")
-        } catch (e: Exception) {
-            toast("Couldn't read that photo. Try another one.")
-        }
-    }
-
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_LONG).show()
-
-    companion object { private const val PICK_PHOTO = 7 }
 }
 
 /** In-app live preview using the same Scene as the wallpaper. */
