@@ -160,7 +160,7 @@ class Scene {
             for (o in owls) drawOwlEyes(cv, o[0], o[1], u, t, o[2].toInt())
             drawFireflies(cv, w, gy, u, t, sx)
         }
-        drawCharacter(cv, cx, footY, u, isNight)
+        drawCharacter(cv, cx, footY, u, t, isNight)
         if (layer >= 0) cv.restoreToCount(layer)
     }
 
@@ -237,85 +237,128 @@ class Scene {
         cv.drawArc(oval, 180f, 180f, true, p)
     }
 
-    // ---- character --------------------------------------------------------
+    // ---- character: a shih tzu standing on its hind legs ----------------
+    // Ported from web/scene.js. Geometry in "u" units, origin at the feet, facing right.
     private class Hand(val x: Float, val y: Float, val dir: Float)
 
-    private fun bob(u: Float) = abs(sin(walkPhase)) * u * 0.7f
+    private fun bob(u: Float) = abs(sin(walkPhase)) * u * 0.6f
 
     private fun hand(cx: Float, footY: Float, u: Float): Hand {
-        val shX = u * 0.8f; val shY = -u * 14.5f - bob(u)
-        val len = u * 9.5f
+        val shX = u * 1.6f; val shY = -u * 10.6f - bob(u)
+        val len = u * 8.6f
         val lx = shX + cos(beamAngle) * len; val ly = shY + sin(beamAngle) * len
         val s = if (turn == 0f) 1f else sign(turn)
         return Hand(cx + lx * turn, footY + ly, atan2(sin(beamAngle), cos(beamAngle) * s))
     }
 
-    private fun drawCharacter(cv: Canvas, cx: Float, footY: Float, u: Float, dim: Boolean) {
-        val swing = sin(walkPhase) * 0.55f
+    private fun ell(cv: Canvas, x: Float, y: Float, rx: Float, ry: Float, rot: Float = 0f) {
+        if (rot != 0f) { cv.save(); cv.rotate(Math.toDegrees(rot.toDouble()).toFloat(), x, y) }
+        oval.set(x - rx, y - ry, x + rx, y + ry); cv.drawOval(oval, p)
+        if (rot != 0f) cv.restore()
+    }
+
+    private fun drawCharacter(cv: Canvas, cx: Float, footY: Float, u: Float, t: Float, dim: Boolean) {
+        val swing = sin(walkPhase) * 0.45f
         val bob = bob(u)
-        val coat = c(if (dim) "#d9a521" else "#ffc928")
-        val coatDark = c(if (dim) "#a87b12" else "#e0a800")
-        val pants = c(if (dim) "#27325a" else "#34447a")
-        val boot = c(if (dim) "#3a2416" else "#5a3a22")
-        val skin = c(if (dim) "#d9a888" else "#f6c9a5")
-        val hat = c(if (dim) "#c23b3b" else "#e84a4a")
+        val fur = c(if (dim) "#ddd3c2" else "#f6eee0")
+        val furShade = c(if (dim) "#c4b8a4" else "#e2d6c2")
+        val tan = c(if (dim) "#b5844f" else "#cf9a5f")
+        val ear = c(if (dim) "#33241c" else "#3f2c22")
+        val earTop = c(if (dim) "#8f6640" else "#a97a4c")
+        val collar = c(if (dim) "#d65a1a" else "#f26b1d")
+        val collar2 = c(if (dim) "#e0b52e" else "#ffd23f")
+        val collar3 = c(if (dim) "#b8322c" else "#d9402f")
+        val metal = c(if (dim) "#a9adb3" else "#c9ccd1")
+        val tika = c(if (dim) "#b8394c" else "#d9455c")
 
         cv.save()
         cv.translate(cx, footY)
         cv.scale(if (abs(turn) < 0.02f) 0.02f * sign(turn + 1e-4f) else turn, 1f)
 
-        fill(Color.argb(64, 0, 0, 0)); oval.set(-u * 5, -u, u * 5, u); cv.drawOval(oval, p)
+        fill(Color.argb(64, 0, 0, 0)); ell(cv, 0f, 0f, u * 5, u)
         cv.translate(0f, -bob)
-        val hipY = -u * 7.5f
+
+        // tail: a fluffy plume that wags
+        val wag = sin(t * 9) * 0.35f
+        cv.save()
+        cv.translate(-u * 3.2f, -u * 7.5f); cv.rotate(Math.toDegrees((-0.25f + wag).toDouble()).toFloat())
+        for (k in 0 until 6) {
+            fill(if (k > 3) tan else furShade)
+            ell(cv, -u * k * 0.35f + u * k * k * 0.06f, -u * k * 1.05f, u * (1.5f - k * 0.1f), u * (1.3f - k * 0.08f))
+        }
+        cv.restore()
+
         fun leg(ang: Float, color: Int) {
-            val fx = sin(ang) * u * 6.5f; val fy = hipY + cos(ang) * u * 6.5f
-            stroke(color, u * 2.2f); cv.drawLine(0f, hipY, fx, fy, p)
-            fill(boot); oval.set(fx + u * 0.8f - u * 1.8f, fy + u * 0.2f - u, fx + u * 0.8f + u * 1.8f, fy + u * 0.2f + u); cv.drawOval(oval, p)
+            cv.save(); cv.translate(u * 0.2f, -u * 4.6f); cv.rotate(Math.toDegrees(-ang.toDouble()).toFloat())
+            fill(color)
+            oval.set(-u * 1.5f, 0f, u * 1.5f, u * 4.6f); cv.drawRoundRect(oval, u * 1.4f, u * 1.4f, p)
+            ell(cv, u * 0.5f, u * 4.3f, u * 1.9f, u * 1.0f)
+            cv.restore()
         }
-        leg(-swing, c("#1f2849"))
-        stroke(coatDark, u * 2f)
-        cv.drawLine(-u * 0.5f, -u * 14.5f, -u * 0.5f - sin(swing) * u * 4, -u * 9.5f, p)
-        leg(swing, pants)
+        leg(-swing, furShade)
+        stroke(furShade, u * 2.2f)
+        cv.drawLine(-u * 0.6f, -u * 10.4f, -u * 0.6f - sin(swing) * u * 3, -u * 7.2f, p)
+        leg(swing, fur)
 
-        fill(coat)
-        path.reset()
-        path.moveTo(-u * 3.2f, -u * 16)
-        path.quadTo(-u * 4.8f, -u * 10, -u * 4.6f, -u * 6.8f)
-        path.lineTo(u * 4.6f, -u * 6.8f)
-        path.quadTo(u * 4.8f, -u * 10, u * 3.2f, -u * 16)
-        path.close(); cv.drawPath(path, p)
-        fill(coatDark)
-        cv.drawCircle(u * 1.2f, -u * 12, u * 0.45f, p); cv.drawCircle(u * 1.2f, -u * 9.5f, u * 0.45f, p)
+        // body
+        fill(fur); ell(cv, 0f, -u * 8.2f, u * 4.4f, u * 4.9f)
+        fill(tan); ell(cv, -u * 2.6f, -u * 9.6f, u * 1.8f, u * 2.6f, 0.3f)
+        fill(fur)
+        for (k in -3..3) ell(cv, k * u * 1.2f, -u * 3.9f + abs(k) * u * 0.25f, u * 1.0f, u * 0.9f)
 
-        val hx = u * 0.6f; val hy = -u * 20.5f
-        fill(skin); cv.drawCircle(hx, hy, u * 4.6f, p)
-        val ex = cos(beamAngle) * u * 0.6f; val ey = sin(beamAngle) * u * 0.6f
-        for (ox in floatArrayOf(u * 1.2f, u * 3.4f)) {
-            val ecx = hx + ox - u * 0.6f; val ecy = hy - u * 0.4f
-            fill(Color.WHITE); oval.set(ecx - u * 1.05f, ecy - u * 1.3f, ecx + u * 1.05f, ecy + u * 1.3f); cv.drawOval(oval, p)
-            fill(c("#1b1b2a")); cv.drawCircle(ecx + ex, ecy + ey, u * 0.55f, p)
+        // collar (braided, with a ring and a bell)
+        cv.save()
+        cv.translate(u * 0.9f, -u * 12.4f); cv.rotate(Math.toDegrees(0.12).toFloat())
+        fill(collar); oval.set(-u * 3.6f, -u * 0.65f, u * 3.6f, u * 0.65f); cv.drawRoundRect(oval, u * 0.6f, u * 0.6f, p)
+        stroke(collar3, u * 0.25f)
+        for (k in -3..3) cv.drawLine(k * u - u * 0.3f, -u * 0.5f, k * u + u * 0.3f, u * 0.5f, p)
+        fill(collar2); cv.drawRect(-u * 0.9f, -u * 0.7f, -u * 0.1f, u * 0.7f, p)
+        stroke(metal, u * 0.3f); cv.drawCircle(u * 1.6f, u * 1.4f, u * 0.75f, p)
+        fill(c("#d4a93a")); cv.drawCircle(u * 2.9f, u * 1.0f, u * 0.45f, p)
+        fill(collar); cv.drawRect(u * 3.2f, u * 0.3f, u * 3.45f, u * 1.4f, p); cv.drawRect(u * 3.6f, u * 0.3f, u * 3.85f, u * 1.3f, p)
+        cv.restore()
+
+        // head (3/4 view, looking right)
+        val hx = u * 1.6f; val hy = -u * 17.2f
+        fill(ear); ell(cv, hx + u * 4.6f, hy + u * 1.8f, u * 1.6f, u * 3.6f, -0.25f)
+        fill(fur); ell(cv, hx, hy, u * 5.2f, u * 4.9f)
+        for (k in 0 until 5) ell(cv, hx - u * 2 + k * u, hy - u * 4.6f + abs(k - 2) * u * 0.3f, u * 0.9f, u * 0.7f)
+        fill(tan)
+        ell(cv, hx + u * 0.4f, hy - u * 0.6f, u * 2.3f, u * 2.0f, -0.2f)
+        ell(cv, hx + u * 3.5f, hy - u * 0.8f, u * 1.7f, u * 1.8f, 0.2f)
+        fill(tika); ell(cv, hx + u * 1.9f, hy - u * 3.3f, u * 0.55f, u * 0.8f)
+        fill(earTop); ell(cv, hx - u * 3.6f, hy + u * 0.2f, u * 2.0f, u * 2.6f, 0.2f)
+        fill(ear); ell(cv, hx - u * 3.9f, hy + u * 2.4f, u * 1.9f, u * 3.4f, 0.15f)
+        val ex = cos(beamAngle) * u * 0.35f; val ey = sin(beamAngle) * u * 0.35f
+        for ((ox, r) in listOf(u * 0.6f to 1.25f, u * 3.6f to 1.05f)) {
+            val x = hx + ox; val y = hy - u * 0.6f
+            fill(c("#fbf6ee")); ell(cv, x, y, u * r * 1.05f, u * r * 1.1f)
+            fill(c("#5a3420")); ell(cv, x + ex, y + ey, u * r * 0.85f, u * r * 0.9f)
+            fill(c("#120c0a")); ell(cv, x + ex, y + ey, u * r * 0.45f, u * r * 0.5f)
+            fill(Color.WHITE); ell(cv, x + ex + u * r * 0.3f, y + ey - u * r * 0.35f, u * r * 0.22f, u * r * 0.22f)
         }
-        fill(Color.argb(115, 255, 120, 120)); cv.drawCircle(hx + u * 3.4f, hy + u * 1.8f, u * 0.8f, p)
-        stroke(c("#7a3b2e"), u * 0.4f)
-        oval.set(hx + u * 2 - u, hy + u * 1.4f - u, hx + u * 2 + u, hy + u * 1.4f + u)
-        cv.drawArc(oval, 11.5f, 134f, false, p)
+        fill(fur)
+        ell(cv, hx + u * 2.5f, hy + u * 2.3f, u * 2.6f, u * 2.0f)
+        ell(cv, hx + u * 2.3f, hy + u * 3.9f, u * 2.2f, u * 1.4f)
+        stroke(furShade, u * 0.3f)
+        path.reset(); path.moveTo(hx + u * 1.3f, hy + u * 3.4f); path.quadTo(hx + u * 2.4f, hy + u * 2.8f, hx + u * 3.5f, hy + u * 3.4f)
+        cv.drawPath(path, p)
+        fill(c("#161214")); ell(cv, hx + u * 2.5f, hy + u * 1.4f, u * 1.15f, u * 0.85f)
+        fill(Color.argb(89, 255, 255, 255)); ell(cv, hx + u * 2.2f, hy + u * 1.1f, u * 0.35f, u * 0.2f)
 
-        fill(hat)
-        oval.set(hx - u * 4.8f, hy - u * 0.8f - u * 4.8f, hx + u * 4.8f, hy - u * 0.8f + u * 4.8f)
-        cv.drawArc(oval, 183.6f, 172.8f, false, p)
-        cv.drawRect(hx - u * 5, hy - u * 1.6f, hx + u * 5, hy, p)
-        fill(Color.WHITE); cv.drawCircle(hx - u * 1.5f, hy - u * 5.8f, u * 1.3f, p)
-
-        val shX = u * 0.8f; val shY = -u * 14.5f
-        val handX = shX + cos(beamAngle) * u * 5.5f; val handY = shY + sin(beamAngle) * u * 5.5f
-        stroke(coat, u * 2.1f); cv.drawLine(shX, shY, handX, handY, p)
+        // front paw holding the flashlight at beamAngle
+        val shX = u * 1.6f; val shY = -u * 10.6f
+        val handX = shX + cos(beamAngle) * u * 4.2f; val handY = shY + sin(beamAngle) * u * 4.2f
+        stroke(fur, u * 2.3f); cv.drawLine(shX, shY, handX, handY, p)
         cv.save()
         cv.translate(handX, handY); cv.rotate(Math.toDegrees(beamAngle.toDouble()).toFloat())
-        fill(c("#4a5568")); cv.drawRect(-u * 0.5f, -u * 0.7f, u * 2.7f, u * 0.7f, p)
-        fill(c("#718096")); cv.drawRect(u * 2.5f, -u * 1.1f, u * 4f, u * 1.1f, p)
-        fill(c(if (dim && night > 0.5f) "#fffbe0" else "#cbd5e0")); cv.drawRect(u * 3.8f, -u * 0.95f, u * 4.2f, u * 0.95f, p)
+        fill(c("#4a5568")); cv.drawRect(-u * 0.5f, -u * 0.65f, u * 2.5f, u * 0.65f, p)
+        fill(c("#718096")); cv.drawRect(u * 2.4f, -u * 1.0f, u * 3.8f, u * 1.0f, p)
+        fill(c(if (dim && night > 0.5f) "#fffbe0" else "#cbd5e0")); cv.drawRect(u * 3.7f, -u * 0.9f, u * 4.1f, u * 0.9f, p)
         cv.restore()
-        fill(skin); cv.drawCircle(handX, handY, u * 1.1f, p)
+        fill(fur); ell(cv, handX, handY, u * 1.25f, u * 1.15f)
+        stroke(furShade, u * 0.2f)
+        for (d in floatArrayOf(-0.4f, 0f, 0.4f)) cv.drawLine(handX + u * 0.6f, handY + d * u, handX + u * 1.1f, handY + d * u, p)
         cv.restore()
     }
 

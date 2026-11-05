@@ -210,22 +210,19 @@
       ctx.beginPath(); ctx.ellipse(x, y - u * 0.8, u * 2.2, u * 1.4, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
     }
 
-    // ---- character -------------------------------------------------------
+    // ---- character: a shih tzu standing on its hind legs ----------------
+    // Geometry is in "u" units, origin at the feet, facing right.
     pose(u) {
-      const walking = this.night > 0.5;
       const p = this.walkPhase;
-      return {
-        swing: walking ? Math.sin(p) * 0.55 : Math.sin(p) * 0.55,
-        bob: Math.abs(Math.sin(p)) * u * 0.7,
-      };
+      return { swing: Math.sin(p) * 0.45, bob: Math.abs(Math.sin(p)) * u * 0.6 };
     }
 
     // world position of the flashlight lens
     characterHand(cx, footY, u) {
       const { bob } = this.pose(u);
-      const sxw = this.turn; // horizontal scale (-1..1) for the turn
-      const shX = u * 0.8, shY = -u * 14.5 - bob;
-      const len = u * 9.5;
+      const sxw = this.turn;
+      const shX = u * 1.6, shY = -u * 10.6 - bob;
+      const len = u * 8.6;
       const a = this.beamAngle;
       const lx = shX + Math.cos(a) * len, ly = shY + Math.sin(a) * len;
       return { x: cx + lx * sxw, y: footY + ly, dir: Math.atan2(Math.sin(a), Math.cos(a) * Math.sign(sxw || 1)) };
@@ -235,90 +232,128 @@
       const { swing, bob } = this.pose(u);
       const dim = isNight;
       const C = {
-        coat: dim ? '#d9a521' : '#ffc928',
-        coatDark: dim ? '#a87b12' : '#e0a800',
-        pants: dim ? '#27325a' : '#34447a',
-        boot: dim ? '#3a2416' : '#5a3a22',
-        skin: dim ? '#d9a888' : '#f6c9a5',
-        hat: dim ? '#c23b3b' : '#e84a4a',
-        eye: '#1b1b2a',
+        fur: dim ? '#ddd3c2' : '#f6eee0',
+        furShade: dim ? '#c4b8a4' : '#e2d6c2',
+        tan: dim ? '#b5844f' : '#cf9a5f',
+        ear: dim ? '#33241c' : '#3f2c22',
+        earTop: dim ? '#8f6640' : '#a97a4c',
+        nose: '#161214',
+        iris: '#5a3420',
+        collar: dim ? '#d65a1a' : '#f26b1d',
+        collar2: dim ? '#e0b52e' : '#ffd23f',
+        collar3: dim ? '#b8322c' : '#d9402f',
+        metal: dim ? '#a9adb3' : '#c9ccd1',
+        tika: dim ? '#b8394c' : '#d9455c',
       };
+      const ell = (x, y, rx, ry, rot = 0) => { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot, 0, TAU); ctx.fill(); };
       ctx.save();
       ctx.translate(cx, footY);
       ctx.scale(this.turn, 1);
       ctx.lineCap = 'round';
 
-      // shadow
       ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.beginPath(); ctx.ellipse(0, 0, u * 5, u * 1, 0, 0, TAU); ctx.fill();
-
+      ell(0, 0, u * 5, u * 1);
       ctx.translate(0, -bob);
-      const hipY = -u * 7.5;
-      const leg = (ang, color) => {
-        const fx = Math.sin(ang) * u * 6.5, fy = hipY + Math.cos(ang) * u * 6.5;
-        ctx.strokeStyle = color; ctx.lineWidth = u * 2.2;
-        ctx.beginPath(); ctx.moveTo(0, hipY); ctx.lineTo(fx, fy); ctx.stroke();
-        ctx.fillStyle = C.boot;
-        ctx.beginPath(); ctx.ellipse(fx + u * 0.8, fy + u * 0.2, u * 1.8, u * 1, 0, 0, TAU); ctx.fill();
-      };
-      leg(-swing, '#1f2849');
-      // back arm
-      ctx.strokeStyle = C.coatDark; ctx.lineWidth = u * 2;
-      ctx.beginPath(); ctx.moveTo(-u * 0.5, -u * 14.5); ctx.lineTo(-u * 0.5 - Math.sin(swing) * u * 4, -u * 9.5); ctx.stroke();
-      leg(swing, C.pants);
 
-      // body (raincoat)
-      ctx.fillStyle = C.coat;
-      ctx.beginPath();
-      ctx.moveTo(-u * 3.2, -u * 16);
-      ctx.quadraticCurveTo(-u * 4.8, -u * 10, -u * 4.6, -u * 6.8);
-      ctx.lineTo(u * 4.6, -u * 6.8);
-      ctx.quadraticCurveTo(u * 4.8, -u * 10, u * 3.2, -u * 16);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = C.coatDark;
-      ctx.beginPath(); ctx.arc(u * 1.2, -u * 12, u * 0.45, 0, TAU); ctx.arc(u * 1.2, -u * 9.5, u * 0.45, 0, TAU); ctx.fill();
-
-      // head
-      const hx = u * 0.6, hy = -u * 20.5;
-      ctx.fillStyle = C.skin;
-      ctx.beginPath(); ctx.arc(hx, hy, u * 4.6, 0, TAU); ctx.fill();
-      // eyes look along the beam
-      const la = this.beamAngle;
-      const ex = Math.cos(la) * u * 0.6, ey = Math.sin(la) * u * 0.6;
-      for (const ox of [u * 1.2, u * 3.4]) {
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.ellipse(hx + ox - u * 0.6, hy - u * 0.4, u * 1.05, u * 1.3, 0, 0, TAU); ctx.fill();
-        ctx.fillStyle = C.eye;
-        ctx.beginPath(); ctx.arc(hx + ox - u * 0.6 + ex, hy - u * 0.4 + ey, u * 0.55, 0, TAU); ctx.fill();
+      // tail: a fluffy plume that wags
+      const wag = Math.sin(t * 9) * 0.35;
+      ctx.save();
+      ctx.translate(-u * 3.2, -u * 7.5); ctx.rotate(-0.25 + wag);
+      for (let k = 0; k < 6; k++) {
+        ctx.fillStyle = k > 3 ? C.tan : C.furShade;
+        ell(-u * k * 0.35 + u * k * k * 0.06, -u * k * 1.05, u * (1.5 - k * 0.1), u * (1.3 - k * 0.08));
       }
-      // cheek + smile
-      ctx.fillStyle = 'rgba(255,120,120,0.45)';
-      ctx.beginPath(); ctx.arc(hx + u * 3.4, hy + u * 1.8, u * 0.8, 0, TAU); ctx.fill();
-      ctx.strokeStyle = '#7a3b2e'; ctx.lineWidth = u * 0.4;
-      ctx.beginPath(); ctx.arc(hx + u * 2, hy + u * 1.4, u * 1, 0.2, Math.PI - 0.6); ctx.stroke();
-      // beanie
-      ctx.fillStyle = C.hat;
-      ctx.beginPath(); ctx.arc(hx, hy - u * 0.8, u * 4.8, Math.PI * 1.02, -0.02); ctx.closePath(); ctx.fill();
-      ctx.fillRect(hx - u * 5, hy - u * 1.6, u * 10, u * 1.6);
-      ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.arc(hx - u * 1.5, hy - u * 5.8, u * 1.3, 0, TAU); ctx.fill();
+      ctx.restore();
 
-      // front arm + flashlight (pointing at beamAngle)
-      const shX = u * 0.8, shY = -u * 14.5;
+      // hind legs (stubby, fluffy)
+      const leg = (ang, color) => {
+        ctx.save(); ctx.translate(u * 0.2, -u * 4.6); ctx.rotate(-ang);
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.roundRect(-u * 1.5, 0, u * 3, u * 4.6, u * 1.4); ctx.fill();
+        ell(u * 0.5, u * 4.3, u * 1.9, u * 1.0);
+        ctx.restore();
+      };
+      leg(-swing, C.furShade);
+      // back front paw, swinging
+      ctx.strokeStyle = C.furShade; ctx.lineWidth = u * 2.2;
+      ctx.beginPath(); ctx.moveTo(-u * 0.6, -u * 10.4); ctx.lineTo(-u * 0.6 - Math.sin(swing) * u * 3, -u * 7.2); ctx.stroke();
+      leg(swing, C.fur);
+
+      // body
+      ctx.fillStyle = C.fur;
+      ell(0, -u * 8.2, u * 4.4, u * 4.9);
+      ctx.fillStyle = C.tan;
+      ell(-u * 2.6, -u * 9.6, u * 1.8, u * 2.6, 0.3);
+      ctx.fillStyle = C.fur;
+      for (let k = -3; k <= 3; k++) ell(k * u * 1.2, -u * 3.9 + Math.abs(k) * u * 0.25, u * 1.0, u * 0.9);
+
+      // collar (braided, with a ring and a bell)
+      ctx.save();
+      ctx.translate(u * 0.9, -u * 12.4); ctx.rotate(0.12);
+      ctx.fillStyle = C.collar;
+      ctx.beginPath(); ctx.roundRect(-u * 3.6, -u * 0.65, u * 7.2, u * 1.3, u * 0.6); ctx.fill();
+      ctx.strokeStyle = C.collar3; ctx.lineWidth = u * 0.25;
+      for (let k = -3; k <= 3; k++) { ctx.beginPath(); ctx.moveTo(k * u - u * 0.3, -u * 0.5); ctx.lineTo(k * u + u * 0.3, u * 0.5); ctx.stroke(); }
+      ctx.fillStyle = C.collar2; ctx.fillRect(-u * 0.9, -u * 0.7, u * 0.8, u * 1.4);
+      ctx.strokeStyle = C.metal; ctx.lineWidth = u * 0.3;
+      ctx.beginPath(); ctx.arc(u * 1.6, u * 1.4, u * 0.75, 0, TAU); ctx.stroke();
+      ctx.fillStyle = '#d4a93a'; ell(u * 2.9, u * 1.0, u * 0.45, u * 0.45);
+      ctx.fillStyle = C.collar; ctx.fillRect(u * 3.2, u * 0.3, u * 0.25, u * 1.1); ctx.fillRect(u * 3.6, u * 0.3, u * 0.25, u * 1.0);
+      ctx.restore();
+
+      // head (3/4 view, looking right)
+      const hx = u * 1.6, hy = -u * 17.2;
+      // far ear
+      ctx.fillStyle = C.ear; ell(hx + u * 4.6, hy + u * 1.8, u * 1.6, u * 3.6, -0.25);
+      // head fluff
+      ctx.fillStyle = C.fur;
+      ell(hx, hy, u * 5.2, u * 4.9);
+      ctx.fillStyle = C.fur;
+      for (let k = 0; k < 5; k++) ell(hx - u * 2 + k * u, hy - u * 4.6 + Math.abs(k - 2) * u * 0.3, u * 0.9, u * 0.7);
+      // tan eye patches
+      ctx.fillStyle = C.tan;
+      ell(hx + u * 0.4, hy - u * 0.6, u * 2.3, u * 2.0, -0.2);
+      ell(hx + u * 3.5, hy - u * 0.8, u * 1.7, u * 1.8, 0.2);
+      // red tika on the forehead
+      ctx.fillStyle = C.tika; ell(hx + u * 1.9, hy - u * 3.3, u * 0.55, u * 0.8);
+      // near ear: tan at the top, dark brown hanging down
+      ctx.fillStyle = C.earTop; ell(hx - u * 3.6, hy + u * 0.2, u * 2.0, u * 2.6, 0.2);
+      ctx.fillStyle = C.ear; ell(hx - u * 3.9, hy + u * 2.4, u * 1.9, u * 3.4, 0.15);
+      // eyes, looking along the beam
+      const ex = Math.cos(this.beamAngle) * u * 0.35, ey = Math.sin(this.beamAngle) * u * 0.35;
+      for (const [ox, r] of [[u * 0.6, 1.25], [u * 3.6, 1.05]]) {
+        const x = hx + ox, y = hy - u * 0.6;
+        ctx.fillStyle = '#fbf6ee'; ell(x, y, u * r * 1.05, u * r * 1.1);
+        ctx.fillStyle = C.iris; ell(x + ex, y + ey, u * r * 0.85, u * r * 0.9);
+        ctx.fillStyle = '#120c0a'; ell(x + ex, y + ey, u * r * 0.45, u * r * 0.5);
+        ctx.fillStyle = '#fff'; ell(x + ex + u * r * 0.3, y + ey - u * r * 0.35, u * r * 0.22, u * r * 0.22);
+      }
+      // muzzle and beard
+      ctx.fillStyle = C.fur;
+      ell(hx + u * 2.5, hy + u * 2.3, u * 2.6, u * 2.0);
+      ell(hx + u * 2.3, hy + u * 3.9, u * 2.2, u * 1.4);
+      ctx.strokeStyle = C.furShade; ctx.lineWidth = u * 0.3;
+      ctx.beginPath(); ctx.moveTo(hx + u * 1.3, hy + u * 3.4); ctx.quadraticCurveTo(hx + u * 2.4, hy + u * 2.8, hx + u * 3.5, hy + u * 3.4); ctx.stroke();
+      // nose
+      ctx.fillStyle = C.nose; ell(hx + u * 2.5, hy + u * 1.4, u * 1.15, u * 0.85);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ell(hx + u * 2.2, hy + u * 1.1, u * 0.35, u * 0.2);
+
+      // front paw holding the flashlight at beamAngle
+      const shX = u * 1.6, shY = -u * 10.6;
       const a = this.beamAngle;
-      const ca = Math.cos(a), sa = Math.sin(a);
-      const handX = shX + ca * u * 5.5, handY = shY + sa * u * 5.5;
-      ctx.strokeStyle = C.coat; ctx.lineWidth = u * 2.1;
+      const handX = shX + Math.cos(a) * u * 4.2, handY = shY + Math.sin(a) * u * 4.2;
+      ctx.strokeStyle = C.fur; ctx.lineWidth = u * 2.3;
       ctx.beginPath(); ctx.moveTo(shX, shY); ctx.lineTo(handX, handY); ctx.stroke();
       ctx.save();
       ctx.translate(handX, handY); ctx.rotate(a);
-      ctx.fillStyle = '#4a5568'; ctx.fillRect(-u * 0.5, -u * 0.7, u * 3.2, u * 1.4);
-      ctx.fillStyle = '#718096'; ctx.fillRect(u * 2.5, -u * 1.1, u * 1.5, u * 2.2);
+      ctx.fillStyle = '#4a5568'; ctx.fillRect(-u * 0.5, -u * 0.65, u * 3.0, u * 1.3);
+      ctx.fillStyle = '#718096'; ctx.fillRect(u * 2.4, -u * 1.0, u * 1.4, u * 2.0);
       ctx.fillStyle = this.night > 0.5 && isNight ? '#fffbe0' : '#cbd5e0';
-      ctx.fillRect(u * 3.8, -u * 0.95, u * 0.4, u * 1.9);
+      ctx.fillRect(u * 3.7, -u * 0.9, u * 0.4, u * 1.8);
       ctx.restore();
-      ctx.fillStyle = C.skin;
-      ctx.beginPath(); ctx.arc(handX, handY, u * 1.1, 0, TAU); ctx.fill();
+      ctx.fillStyle = C.fur; ell(handX, handY, u * 1.25, u * 1.15);
+      ctx.strokeStyle = C.furShade; ctx.lineWidth = u * 0.2;
+      for (const d of [-0.4, 0, 0.4]) { ctx.beginPath(); ctx.moveTo(handX + u * 0.6, handY + d * u); ctx.lineTo(handX + u * 1.1, handY + d * u); ctx.stroke(); }
 
       ctx.restore();
     }
